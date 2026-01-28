@@ -1,0 +1,91 @@
+services:
+  #PHP
+  laravel-td-concept-app:
+    build:
+      context: .
+      dockerfile: dockerfiles/AppDockerfile
+    container_name: laravel-td-concept-app
+    tty: true
+    restart: unless-stopped
+    env_file: ".env"
+
+    working_dir: /var/www
+    ports:
+      - "9097:9000"
+    volumes:
+      - ../laravel-td-concept-app/:/var/www
+      - ./config/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+      - ./logs/php:/var/log/php/
+      - ../certs:/certs
+    networks:
+      - laravel-td-concept-network
+
+
+  #app-Nginx
+  laravel-td-concept-nginx:
+    image: nginx:alpine
+    container_name: laravel-td-concept-nginx
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8087:80"
+      - "44450:443"
+    volumes:
+      - ../laravel-td-concept-app:/var/www
+      - ./config/nginx/conf.d/:/etc/nginx/conf.d/
+      - ./logs/nginx:/var/log/nginx/
+    networks:
+      - laravel-td-concept-network
+
+  #MySQL Service
+  laravel-td-concept-db:
+    container_name: laravel-td-concept-db
+    ports:
+      - 33370:3306
+    image: mariadb:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: "r00t"
+      MYSQL_DATABASE: laravel-td-concept
+      MYSQL_USER: laravel-td-concept
+      MYSQL_PASSWORD: xH8rWzXQ3Y82RwiWUxudK
+
+    volumes:
+      - laravel-td-concept-dbdata:/var/lib/mysql/
+      - ./logs/mysql:/var/log/mysql
+      - ./config/mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - laravel-td-concept-network
+
+
+  #Node
+  laravel-td-concept-node:
+    restart: 'no'
+    image: node:20
+
+    command: bash -c "npm update && npm install && npm run watch"
+    working_dir: /app
+    volumes:
+      - ../laravel-td-concept-app:/app
+
+  #Composer
+  laravel-td-concept-composer:
+    restart: 'no'
+    image: composer
+    command: install --ignore-platform-reqs --no-scripts
+    volumes:
+      - ../laravel-td-concept-app:/app
+
+
+
+
+#Docker Networks
+networks:
+  laravel-td-concept-network:
+    driver: bridge
+
+#Volumes
+volumes:
+
+  laravel-td-concept-dbdata:
+    driver: local

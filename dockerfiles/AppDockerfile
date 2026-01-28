@@ -1,0 +1,84 @@
+FROM php:8.4.8-fpm-bookworm
+
+ENV XDEBUG_MODE coverage
+ENV SYMFONY_DEPRECATIONS_HELPER disabled
+
+#1 - Set working directory
+WORKDIR /var/www
+
+#2 - APT certs
+RUN apt-get update -y && apt-get upgrade -y \
+&& apt-get install -y ca-certificates \
+&& update-ca-certificates
+
+#2 - Install dependencies
+RUN apt-get update && apt-get install -y \
+    bash \
+    build-essential \
+    libpng-dev \
+    libjpeg62-turbo-dev \
+    libfreetype6-dev \
+    locales \
+    zip \
+    jpegoptim \
+    optipng \
+    pngquant \
+    gifsicle \
+    vim \
+    unzip \
+    git \
+    curl \
+    wget \
+    libzip-dev \
+    libcurl4 \
+    zlib1g-dev \
+    g++ \
+    git \
+    libicu-dev \
+    libzip-dev \
+    fontconfig \
+    libfreetype6 \
+    libjpeg62-turbo \
+    libpng16-16 \
+    libx11-6 \
+    libxcb1 \
+    libxext6 \
+    libxrender1 \
+    xfonts-75dpi \
+    xfonts-base \
+    sqlite3 \
+    libsqlite3-dev \
+    libz-dev \
+    libmemcached-dev \
+    memcached \
+    libmemcached-tools \
+    librabbitmq4 \
+    librabbitmq-dev
+
+#3 - Clear cache
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+#4 - Normal inbuilt extensions
+RUN docker-php-ext-install pdo_mysql exif pcntl intl opcache pdo pdo_mysql zip
+
+#5 - GD
+RUN docker-php-ext-configure gd && \
+    docker-php-ext-install gd
+
+#6 - AMQP - via the Dark Arts.
+RUN wget --no-check-certificate https://pecl.php.net/get/amqp -O ./amqp-2.1.2.tgz \
+        && pecl install --offline ./amqp-2.1.2.tgz \
+        && rm ./amqp-2.1.2.tgz
+
+#7 Enable extensions
+RUN docker-php-ext-enable exif amqp
+
+#8 - Copy existing application directory permissions
+COPY --chown=www-data:www-data . /var/www
+
+#9- Change current user to www
+USER www-data
+
+#10 -  Expose port 9000 and start php-fpm server
+EXPOSE 9000
+CMD ["php-fpm"]
